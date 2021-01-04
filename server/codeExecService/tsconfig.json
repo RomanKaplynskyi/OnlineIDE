@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "AMD",
+    "target": "es5",
+    "removeComments": true,
+    "outDir": "js",
+    "sourceMap": true,
+    "outFile": "main.js",
+    "resolveJsonModule": true
+  }
+}
