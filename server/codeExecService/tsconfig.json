@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "es5",
+    "removeComments": true,
+    "outDir": "../../out",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "esModuleInterop": true
+  },
+  "types": [
+
+  ],
+  "exclude": [
+    "../../node_modules"
+  ]
+}
