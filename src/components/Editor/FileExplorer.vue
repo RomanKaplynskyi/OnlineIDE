@@ -39,46 +39,6 @@
     }
     tree = []
     items = [
-      // {
-      //   name: 'public',
-      //   children: [
-      //     {
-      //       name: 'static',
-      //       children: [{
-      //         name: 'logo.png',
-      //         file: 'png',
-      //       }],
-      //     },
-      //     {
-      //       name: 'favicon.ico',
-      //       file: 'png',
-      //     },
-      //     {
-      //       name: 'index.html',
-      //       file: 'html',
-      //     },
-      //   ],
-      // },
-      // {
-      //   name: '.gitignore',
-      //   file: 'txt',
-      // },
-      // {
-      //   name: 'babel.config.js',
-      //   file: 'js',
-      // },
-      // {
-      //   name: 'package.json',
-      //   file: 'json',
-      // },
-      // {
-      //   name: 'README.md',
-      //   file: 'md',
-      // },
-      // {
-      //   name: 'vue.config.js',
-      //   file: 'js',
-      // },
       {
         name: 'test.js',
         file: 'js',
