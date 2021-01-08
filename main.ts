@@ -5,7 +5,7 @@ import * as cors from '@koa/cors'
 import * as serve from 'koa-static'
 const app = new Koa();
 const router = new Router();
-const PORT = process.env.PORT || 8080;
+const PORT = 8080;
 app.use(serve('./dist'))
 app.use(bodyParser());
 app.use(cors())
