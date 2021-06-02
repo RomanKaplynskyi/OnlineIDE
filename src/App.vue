@@ -2,7 +2,7 @@
   <v-app id="app">
     <side-menu />
     <v-main>
-      <code-editor />
+      <router-view :key="$route.path" />
     </v-main>
     <v-footer app>
     </v-footer>

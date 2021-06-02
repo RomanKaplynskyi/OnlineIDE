@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h3> {{out}} </h3>
+    <h3 style="width: 200px"> {{out}} </h3>
   </div>
 </template>
 

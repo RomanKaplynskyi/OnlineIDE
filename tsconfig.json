@@ -6,6 +6,7 @@
     "jsx": "preserve",
     "importHelpers": true,
     "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowJs": true,
     "skipLibCheck": true,
@@ -14,9 +15,11 @@
     "sourceMap": true,
     "baseUrl": ".",
     "resolveJsonModule": true,
+    "strictPropertyInitialization": false,
     "types": [
       "webpack-env",
-      "vuetify"
+      "vuetify",
+      "jest"
     ],
     "paths": {
       "@/*": [
@@ -38,7 +41,6 @@
     "tests/**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "server"
+    "./node_modules"
   ]
 }
