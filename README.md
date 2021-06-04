@@ -1,8 +1,4 @@
-# web-ide
-
-## Start compile service
-
-cd /codeExecService && tsc main.ts && node main.js
+# web_ide_
 
 ## Project setup
 ```

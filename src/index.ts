@@ -1,4 +1,4 @@
-import Koa from 'koa';
+import Koa, {ExtendableContext} from 'koa';
 import Router from 'koa-router';
 //import bodyParser from "koa-bodyparser";
 
@@ -6,7 +6,7 @@ const app = new Koa();
 const router = new Router();
 const PORT = 3000;
 
-router.get('/', async (ctx) => {
+router.get('/', async (ctx : ExtendableContext) => {
   ctx.body = { msg: 'Hello world!' };
 });
 

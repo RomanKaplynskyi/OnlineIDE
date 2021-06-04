@@ -1,1 +1,0 @@
-webidee: cd out && node main.js

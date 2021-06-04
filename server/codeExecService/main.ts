@@ -1,11 +1,12 @@
-import Koa from 'koa';
+// Запускает сервак для выполнения кода
+import Koa, {ExtendableContext} from 'koa';
 import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors'
 import _CodeHandler from "./CodeHandler";
 const app = new Koa();
 const router = new Router();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3099;
 const CodeHandler = new _CodeHandler()
 app.use(bodyParser());
 app.use(cors())
@@ -14,7 +15,7 @@ router.get('/', async (ctx) => {
   ctx.body = { msg: 'Hello world' };
 })
 
-router.post('/runCode', async (ctx, next) => {
+router.post('/runCode', async (ctx , next) => {
   await next()
   const data = ctx.request.body
   if (data) {
@@ -33,5 +34,6 @@ router.post('/runCode', async (ctx, next) => {
 
 
 app.listen(PORT, () => {
-  console.log('Koa started!');
+  console.log('Koa started on port ' + PORT);
+
 });
