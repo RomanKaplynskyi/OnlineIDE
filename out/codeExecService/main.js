@@ -42,15 +42,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var koa_1 = __importDefault(require("koa"));
 var koa_router_1 = __importDefault(require("koa-router"));
 var koa_bodyparser_1 = __importDefault(require("koa-bodyparser"));
-var cors_1 = __importDefault(require("@koa/cors"));
 var CodeHandler_1 = __importDefault(require("./CodeHandler"));
 var app = new koa_1.default();
 var router = new koa_router_1.default();
 var PORT = process.env.PORT || 3099;
+var OidManager = require('./models/OidManager');
+var OidProvider = require('./models/OidProvider');
+var oidManager = new OidManager({ redirectUrl: "http://localhost:3099/login_code" });
 var CodeHandler = new CodeHandler_1.default();
+var providerIndex = 0;
 app.use(koa_bodyparser_1.default());
-app.use(cors_1.default());
 app.use(router.routes());
+oidManager.RegisterProvider(new OidProvider({
+    tenant_id: 'e85368ce-b733-4d62-9fbb-856330c351fe',
+    client_id: '77b1ea08-b5d7-4ee7-a5b1-4bc397d091ac',
+    client_secret: 'wIQ7Q~fHxwyJW~67EFfuPGk4t9EQFPr_DDfw6',
+    token_url: 'https://login.microsoftonline.com/e85368ce-b733-4d62-9fbb-856330c351fe/oauth2/v2.0/token',
+    authorize_url: 'https://login.microsoftonline.com/e85368ce-b733-4d62-9fbb-856330c351fe/oauth2/v2.0/authorize',
+    scope: 'openid',
+    name: 'Azure'
+}));
+oidManager.RegisterProvider(new OidProvider({
+    client_id: '1859055940-emivjbkel8kod0mek6brp6p6hnf8g5sk.apps.googleusercontent.com',
+    client_secret: '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',
+    token_url: 'https://oauth2.googleapis.com/token',
+    authorize_url: 'https://accounts.google.com/o/oauth2/auth',
+    scope: 'openid%20email%20profile',
+    name: 'Google'
+}));
 router.get('/', function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         ctx.body = { msg: 'Hello world' };
@@ -81,6 +100,43 @@ router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, 
                 ctx.body = { msg: 'error' };
                 return [3, 5];
             case 5: return [2];
+        }
+    });
+}); });
+router.get('/logViaGoogle', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var res;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, next()];
+            case 1:
+                _a.sent();
+                console.log('ddss');
+                res = oidManager.GetRedirectHeaderByProvider(oidManager.GetProviderByIndex(providerIndex));
+                console.log(res);
+                ctx.redirect(res, 302);
+                return [2];
+        }
+    });
+}); });
+router.post('/login_code', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, code, state, res, _b, header, data;
+    var _c;
+    return __generator(this, function (_d) {
+        switch (_d.label) {
+            case 0: return [4, next()];
+            case 1:
+                _d.sent();
+                _a = ctx.request.body, code = _a.code, state = _a.state;
+                return [4, oidManager.AuthUserByCode(code, oidManager.GetProviderByIndex(providerIndex))];
+            case 2:
+                res = _d.sent();
+                _b = (_c = res.data) === null || _c === void 0 ? void 0 : _c.access_token.split('.'), header = _b[0], data = _b[1];
+                console.dir({
+                    header: atob(header),
+                    data: atob(data)
+                });
+                ctx.redirect('http://localhost:8080');
+                return [2];
         }
     });
 }); });

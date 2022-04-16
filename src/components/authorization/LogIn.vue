@@ -50,9 +50,10 @@
         <v-btn
             color="blue darken-1"
             text
+            id="loginViaGoogleBtn"
             @click="tryLogin"
         >
-          Save
+          Log in via google
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -63,6 +64,8 @@
 <script lang="ts">
 import register from './Register.vue';
 import {Component, Prop, Vue} from "vue-property-decorator"
+import config from "../../../projectConfig"
+
 @Component({
   components: {
     register
@@ -77,13 +80,17 @@ export default class LogIn extends Vue {
   pass: string = ''
 
   async tryLogin () {
-    const response = await fetch('http://localhost:3099/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json;charset=utf-8' },
-      body: JSON.stringify({ email: this.login, password: this.pass })
+    console.dir('asdsa')
+    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaGoogle`
+    window.location.href = codeExecutorUrl
+    /*fetch(codeExecutorUrl, {
+      method: 'post',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json;charset=utf-8' }
     })
-
-    if (response.status === 200) console.log('ok')
+        .then(() => {
+          console.log('files')
+        })*/
   }
 
 }
