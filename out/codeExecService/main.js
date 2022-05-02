@@ -76,6 +76,27 @@ router.get('/', function (ctx) { return __awaiter(void 0, void 0, void 0, functi
         return [2];
     });
 }); });
+router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, next()];
+            case 1:
+                _a.sent();
+                data = ctx.request.body;
+                if (data) {
+                    console.log(data);
+                    try {
+                        ctx.body = { msg: 'true' };
+                    }
+                    catch (e) {
+                        ctx.body = { msg: 'error' };
+                    }
+                }
+                return [2];
+        }
+    });
+}); });
 router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
     var data, msg, e_1;
     return __generator(this, function (_a) {
@@ -103,14 +124,13 @@ router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, 
         }
     });
 }); });
-router.get('/logViaGoogle', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+router.get('/logViaMicrosoft', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
     var res;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, next()];
             case 1:
                 _a.sent();
-                console.log('ddss');
                 res = oidManager.GetRedirectHeaderByProvider(oidManager.GetProviderByIndex(providerIndex));
                 console.log(res);
                 ctx.redirect(res, 302);

@@ -44,6 +44,19 @@ router.get('/', async (ctx) => {
   ctx.body = { msg: 'Hello world' };
 })
 
+router.post('/logIn', async (ctx, next) => {
+  await next()
+  const data = ctx.request.body
+  if (data) {
+    console.log(data)
+    try {
+      ctx.body = { msg: 'true'}
+    } catch (e) {
+      ctx.body = { msg: 'error' }
+    }
+  }
+})
+
 router.post('/runCode', async (ctx , next) => {
   await next()
   const data = ctx.request.body
@@ -59,17 +72,13 @@ router.post('/runCode', async (ctx , next) => {
   }
 });
 
-router.get('/logViaGoogle', async (ctx , next) => {
+router.get('/logViaMicrosoft', async (ctx , next) => {
   await next()
-  console.log('ddss')
 
   const res = oidManager.GetRedirectHeaderByProvider(oidManager.GetProviderByIndex(providerIndex))
   console.log(res)
   // @ts-ignore
-
   ctx.redirect(res, 302)
-
-
 });
 
 router.post('/login_code', async (ctx, next) => {
@@ -83,7 +92,6 @@ router.post('/login_code', async (ctx, next) => {
        data: atob(data)
   })
   ctx.redirect('http://localhost:8080')
-
 })
 
 app.listen(PORT, () => {

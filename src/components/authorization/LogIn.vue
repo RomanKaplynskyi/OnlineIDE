@@ -30,14 +30,24 @@
           </v-container>
         </v-form>
       </v-card-text>
+
+      <v-card-text v-if="errorMsgVisible" style="color: red">Password or Login is incorrect! Please, try again!</v-card-text>
       <v-card-actions>
         <v-btn
           color="blue darken-1"
           text
           plain
-          @click="registerVisible = true"
+          @click="openRegBot"
         >
           Register
+        </v-btn>
+        <v-btn
+            color="blue darken-1"
+            text
+            id="loginViaMicrosoftBtn"
+            @click="tryLoginViaMicrosoft"
+        >
+          Log in via Microsoft
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn
@@ -50,10 +60,10 @@
         <v-btn
             color="blue darken-1"
             text
-            id="loginViaGoogleBtn"
+            id="logIn"
             @click="tryLogin"
         >
-          Log in via google
+          Log in
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -75,22 +85,52 @@ export default class LogIn extends Vue {
   @Prop() visible: boolean = false
 
   registerVisible: boolean = false
+  errorMsgVisible: boolean = false
 
   login: string = ''
   pass: string = ''
 
-  async tryLogin () {
+  async tryLoginViaMicrosoft () {
     console.dir('asdsa')
-    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaGoogle`
+    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/`
     window.location.href = codeExecutorUrl
-    /*fetch(codeExecutorUrl, {
-      method: 'post',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json;charset=utf-8' }
-    })
-        .then(() => {
-          console.log('files')
-        })*/
+  }
+  async tryLogin () {
+    console.log(this.login)
+    console.log(this.pass)
+
+    if (this.pass && this.login) {
+      console.log('=======1')
+
+      let codeExecutorUrl : string = `${config.codeExecServiceUrl}/runCode`
+      fetch(codeExecutorUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+        body: JSON.stringify({ login: this.login, password: this.pass })
+      })
+          .then(res => res.json())
+          .then(res => {
+            console.log('=======2')
+            console.log(res.msg)
+          })
+
+
+
+
+
+      /*if (response.status === 200) {
+        console.log('ok')
+        console.log(response)
+      } else {
+        this.errorMsgVisible = true
+        setTimeout(() => this.errorMsgVisible = false, 5000)
+      }*/
+    }
+
+  }
+
+  async openRegBot () {
+    window.open('http://t.me/OnlineIDELog_bot', '_blank');
   }
 
 }

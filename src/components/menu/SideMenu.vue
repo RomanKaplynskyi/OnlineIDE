@@ -14,7 +14,7 @@
           </v-list-item-avatar>
         </v-list-item>
 
-        <v-list-item v-if="!isUserLoged" link ref="loginButton">
+        <v-list-item v-if="isUserLoged" link ref="loginButton">
           <v-list-item-content>
             <v-list-item-title @click.prevent="visible=true" class="title">
               Login
@@ -22,7 +22,7 @@
           </v-list-item-content>
         </v-list-item>
 
-        <v-list-item v-if="isUserLoged" link ref="logoutButton">
+<!--        <v-list-item v-if="isUserLoged" link ref="logoutButton">
           <v-list-item-content>
             <v-list-item-title @click.prevent="visible=true" class="title">
               Logout
@@ -32,7 +32,7 @@
 
 
 
-        </v-list-item>
+        </v-list-item>-->
       </v-list>
 
       <v-divider></v-divider>
@@ -67,7 +67,7 @@
 <script lang="ts">
 import { Vue, Component } from "vue-property-decorator"
 import login from '../authorization/LogIn.vue';
-import User from "@/components/authorization/User";
+//import User from "@/components/authorization/User";
 
 @Component({
   components: {
@@ -78,10 +78,7 @@ export default class SideMenu extends Vue {
   visible: boolean = false
   isUserLoged: boolean = true
 
-  createModel (user : User) : void {
-    if (!user || !user.isUserLoged) return
 
-  }
 }
 
 
