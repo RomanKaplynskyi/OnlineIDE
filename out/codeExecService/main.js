@@ -42,6 +42,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var koa_1 = __importDefault(require("koa"));
 var koa_router_1 = __importDefault(require("koa-router"));
 var koa_bodyparser_1 = __importDefault(require("koa-bodyparser"));
+var cors_1 = __importDefault(require("@koa/cors"));
 var CodeHandler_1 = __importDefault(require("./CodeHandler"));
 var app = new koa_1.default();
 var router = new koa_router_1.default();
@@ -49,9 +50,18 @@ var PORT = process.env.PORT || 3099;
 var OidManager = require('./models/OidManager');
 var OidProvider = require('./models/OidProvider');
 var oidManager = new OidManager({ redirectUrl: "http://localhost:3099/login_code" });
+var UserModel = require('./models/users');
+var sequelize = require('./db');
+var bcrypt = require('bcrypt');
 var CodeHandler = new CodeHandler_1.default();
 var providerIndex = 0;
+var user = {
+    login: null,
+    fullName: null,
+    id: null
+};
 app.use(koa_bodyparser_1.default());
+app.use(cors_1.default());
 app.use(router.routes());
 oidManager.RegisterProvider(new OidProvider({
     tenant_id: 'e85368ce-b733-4d62-9fbb-856330c351fe',
@@ -77,28 +87,84 @@ router.get('/', function (ctx) { return __awaiter(void 0, void 0, void 0, functi
     });
 }); });
 router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data;
+    var data, userData, isLogSuccessful, sendConfirmCode, e_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, next()];
             case 1:
                 _a.sent();
                 data = ctx.request.body;
-                if (data) {
-                    console.log(data);
-                    try {
-                        ctx.body = { msg: 'true' };
-                    }
-                    catch (e) {
-                        ctx.body = { msg: 'error' };
-                    }
+                if (!data) return [3, 8];
+                console.log(data);
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 7, , 8]);
+                return [4, UserModel.findOne({ where: { eMail: data.login } })];
+            case 3:
+                userData = _a.sent();
+                console.log(userData);
+                if (!userData) return [3, 5];
+                user.login = userData.eMail;
+                user.id = userData.id;
+                return [4, bcrypt.compare(data.password, userData.password)];
+            case 4:
+                isLogSuccessful = _a.sent();
+                if (isLogSuccessful) {
+                    sendConfirmCode = function (chatId, userId) {
+                    };
+                    sendConfirmCode(userData.chatId, userData.id);
                 }
-                return [2];
+                ctx.body = { res: isLogSuccessful };
+                return [3, 6];
+            case 5:
+                ctx.body = { res: false };
+                _a.label = 6;
+            case 6: return [3, 8];
+            case 7:
+                e_1 = _a.sent();
+                ctx.body = { msg: 'error' };
+                return [3, 8];
+            case 8: return [2];
+        }
+    });
+}); });
+router.post('/confirmCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, userData, isCodeRight, e_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, next()];
+            case 1:
+                _a.sent();
+                data = ctx.request.body;
+                if (!data) return [3, 8];
+                console.log(data);
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 7, , 8]);
+                return [4, UserModel.findOne({ where: { id: user.id } })];
+            case 3:
+                userData = _a.sent();
+                console.log(userData);
+                if (!(userData && userData.confirmCode)) return [3, 5];
+                return [4, bcrypt.compare(data.confirmCode, userData.confirmCode)];
+            case 4:
+                isCodeRight = _a.sent();
+                ctx.body = { res: isCodeRight };
+                return [3, 6];
+            case 5:
+                ctx.body = { res: false };
+                _a.label = 6;
+            case 6: return [3, 8];
+            case 7:
+                e_2 = _a.sent();
+                ctx.body = { msg: 'error' };
+                return [3, 8];
+            case 8: return [2];
         }
     });
 }); });
 router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, msg, e_1;
+    var data, msg, e_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, next()];
@@ -117,7 +183,7 @@ router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, 
                 ctx.body = { msg: msg };
                 return [3, 5];
             case 4:
-                e_1 = _a.sent();
+                e_3 = _a.sent();
                 ctx.body = { msg: 'error' };
                 return [3, 5];
             case 5: return [2];
@@ -162,5 +228,12 @@ router.post('/login_code', function (ctx, next) { return __awaiter(void 0, void 
 }); });
 app.listen(PORT, function () {
     console.log('Koa started on port ' + PORT);
+    try {
+        sequelize.authenticate().then(function () { return console.log('Databaze connected...'); }).catch(function (err) { return console.log('Error: ' + err); });
+        sequelize.sync();
+    }
+    catch (e) {
+        console.log('Databaze connection failed');
+    }
 });
 //# sourceMappingURL=main.js.map

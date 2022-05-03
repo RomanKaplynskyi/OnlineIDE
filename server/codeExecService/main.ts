@@ -1,6 +1,7 @@
 // Запускает сервак для выполнения кода
 import Koa, {ExtendableContext} from 'koa';
 import Router from 'koa-router';
+//import bcrypt from 'bcrypt';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors'
 import _CodeHandler from "./CodeHandler";
@@ -11,11 +12,20 @@ const PORT = process.env.PORT || 3099;
 const OidManager = require('./models/OidManager')
 const OidProvider = require('./models/OidProvider')
 const oidManager = new OidManager({ redirectUrl: `http://localhost:3099/login_code` })
+const UserModel = require('./models/users')
+const sequelize = require('./db')
+const bcrypt = require('bcrypt')
 const CodeHandler = new _CodeHandler()
 const providerIndex = 0
+const user = {
+  login: null,
+  fullName: null,
+  id: null
+}
 app.use(bodyParser());
-//app.use(cors())
+app.use(cors())
 app.use(router.routes());
+
 
 //Asure OpenID Provider
 oidManager.RegisterProvider(new OidProvider({
@@ -50,12 +60,54 @@ router.post('/logIn', async (ctx, next) => {
   if (data) {
     console.log(data)
     try {
-      ctx.body = { msg: 'true'}
+      const userData = await UserModel.findOne({where: {eMail: data.login}})
+      console.log(userData)
+      if (userData) {
+        user.login = userData.eMail
+        user.id = userData.id
+        const isLogSuccessful = await bcrypt.compare(data.password, userData.password)
+
+
+        if (isLogSuccessful) {
+          const sendConfirmCode = (chatId, userId) => {
+
+          }
+          sendConfirmCode(userData.chatId, userData.id)
+        }
+        ctx.body = { res: isLogSuccessful }
+      } else {
+        ctx.body = { res: false}
+      }
     } catch (e) {
       ctx.body = { msg: 'error' }
     }
   }
 })
+
+router.post('/confirmCode', async (ctx, next) => {
+  await next()
+  const data = ctx.request.body
+  if (data) {
+    console.log(data)
+    try {
+      const userData = await UserModel.findOne({where: {id: user.id}})
+      console.log(userData)
+      if (userData && userData.confirmCode) {
+        const isCodeRight = await bcrypt.compare(data.confirmCode, userData.confirmCode)
+        if (isCodeRight) {
+          userData.confirmCode = null
+          await userData.save()
+        }
+        ctx.body = { res: isCodeRight }
+      } else {
+        ctx.body = { res: false}
+      }
+    } catch (e) {
+      ctx.body = { msg: 'error' }
+    }
+  }
+})
+
 
 router.post('/runCode', async (ctx , next) => {
   await next()
@@ -96,6 +148,12 @@ router.post('/login_code', async (ctx, next) => {
 
 app.listen(PORT, () => {
   console.log('Koa started on port ' + PORT);
+  try {
+     sequelize.authenticate().then(() => console.log('Databaze connected...')).catch(err => console.log('Error: ' + err))
+     sequelize.sync()
+  } catch (e) {
+    console.log('Databaze connection failed')
+  }
 });
 //const server = app.listen(PORT)
 

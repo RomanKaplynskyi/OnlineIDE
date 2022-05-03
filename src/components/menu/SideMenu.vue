@@ -77,10 +77,7 @@ import login from '../authorization/LogIn.vue';
 export default class SideMenu extends Vue {
   visible: boolean = false
   isUserLoged: boolean = true
-
-
 }
-
 
 </script>
 
