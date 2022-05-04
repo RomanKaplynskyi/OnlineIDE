@@ -1,7 +1,6 @@
 // Запускает сервак для выполнения кода
 import Koa, {ExtendableContext} from 'koa';
 import Router from 'koa-router';
-//import bcrypt from 'bcrypt';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors'
 import _CodeHandler from "./CodeHandler";
@@ -13,6 +12,7 @@ const OidManager = require('./models/OidManager')
 const OidProvider = require('./models/OidProvider')
 const oidManager = new OidManager({ redirectUrl: `http://localhost:3099/login_code` })
 const UserModel = require('./models/users')
+const UserEmails = require('./models/emails')
 const sequelize = require('./db')
 const bcrypt = require('bcrypt')
 const CodeHandler = new _CodeHandler()
@@ -60,20 +60,16 @@ router.post('/logIn', async (ctx, next) => {
   if (data) {
     console.log(data)
     try {
-      const userData = await UserModel.findOne({where: {eMail: data.login}})
+      let userData = null
+      const userEmail = await UserEmails.findOne({where: {eMail: data.login}})
+      if (userEmail) {
+        userData = await UserModel.findOne({where: {id: userEmail.userID}})
+      }
       console.log(userData)
       if (userData) {
-        user.login = userData.eMail
+        user.login = userEmail.eMail
         user.id = userData.id
         const isLogSuccessful = await bcrypt.compare(data.password, userData.password)
-
-
-        if (isLogSuccessful) {
-          const sendConfirmCode = (chatId, userId) => {
-
-          }
-          sendConfirmCode(userData.chatId, userData.id)
-        }
         ctx.body = { res: isLogSuccessful }
       } else {
         ctx.body = { res: false}
@@ -136,7 +132,6 @@ router.get('/logViaMicrosoft', async (ctx , next) => {
 router.post('/login_code', async (ctx, next) => {
   await next()
   const { code, state } = ctx.request.body
-  //console.log(code, state)
   const res = await oidManager.AuthUserByCode(code, oidManager.GetProviderByIndex(providerIndex))
   const [header, data] = res.data?.access_token.split('.')
    console.dir({
