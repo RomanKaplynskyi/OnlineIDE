@@ -67,7 +67,8 @@ export default class ConfirmCode extends Vue {
       })
           .then(resp => resp.json())
           .then(result => {
-            if (result && result.res) {
+            console.log(result)
+            if (result && result.token) {
               this.successMsgVisible = true
               setTimeout(() => this.successMsgVisible = false, 5000)
               console.log('Confirmation success!')

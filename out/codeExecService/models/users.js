@@ -5,7 +5,6 @@ var User = sequelize.define('users', {
     password: { type: DataTypes.CHAR },
     phoneNum: { type: DataTypes.CHAR },
     fullName: { type: DataTypes.CHAR },
-    eMail: { type: DataTypes.CHAR },
     confirmCode: { type: DataTypes.BIGINT },
 });
 module.exports = User;

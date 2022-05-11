@@ -113,8 +113,6 @@ export default class LogIn extends Vue {
           .then(result => {
             if (result && result.res) {
 
-
-
               this.visible = false
               this.confirmCodeVisible = true
               //this.successMsgVisible = true

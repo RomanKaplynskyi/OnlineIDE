@@ -51,8 +51,14 @@ var OidManager = require('./models/OidManager');
 var OidProvider = require('./models/OidProvider');
 var oidManager = new OidManager({ redirectUrl: "http://localhost:3099/login_code" });
 var UserModel = require('./models/users');
+var UserEmails = require('./models/emails');
+var TokensDB = require('./models/tokens');
 var sequelize = require('./db');
 var bcrypt = require('bcrypt');
+var jwtKoa = require('koa-jwt');
+var koaBody = require('koa-body');
+var jwt = require('jsonwebtoken');
+var uuid = require('uuid/v4');
 var CodeHandler = new CodeHandler_1.default();
 var providerIndex = 0;
 var user = {
@@ -60,9 +66,7 @@ var user = {
     fullName: null,
     id: null
 };
-app.use(koa_bodyparser_1.default());
-app.use(cors_1.default());
-app.use(router.routes());
+var secretJWT = process.env.JWT_SECRET || 'jwt_secret_key';
 oidManager.RegisterProvider(new OidProvider({
     tenant_id: 'e85368ce-b733-4d62-9fbb-856330c351fe',
     client_id: '77b1ea08-b5d7-4ee7-a5b1-4bc397d091ac',
@@ -80,96 +84,17 @@ oidManager.RegisterProvider(new OidProvider({
     scope: 'openid%20email%20profile',
     name: 'Google'
 }));
-router.get('/', function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        ctx.body = { msg: 'Hello world' };
-        return [2];
-    });
-}); });
-router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, userData, isLogSuccessful, sendConfirmCode, e_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4, next()];
-            case 1:
-                _a.sent();
-                data = ctx.request.body;
-                if (!data) return [3, 8];
-                console.log(data);
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 7, , 8]);
-                return [4, UserModel.findOne({ where: { eMail: data.login } })];
-            case 3:
-                userData = _a.sent();
-                console.log(userData);
-                if (!userData) return [3, 5];
-                user.login = userData.eMail;
-                user.id = userData.id;
-                return [4, bcrypt.compare(data.password, userData.password)];
-            case 4:
-                isLogSuccessful = _a.sent();
-                if (isLogSuccessful) {
-                    sendConfirmCode = function (chatId, userId) {
-                    };
-                    sendConfirmCode(userData.chatId, userData.id);
-                }
-                ctx.body = { res: isLogSuccessful };
-                return [3, 6];
-            case 5:
-                ctx.body = { res: false };
-                _a.label = 6;
-            case 6: return [3, 8];
-            case 7:
-                e_1 = _a.sent();
-                ctx.body = { msg: 'error' };
-                return [3, 8];
-            case 8: return [2];
-        }
-    });
-}); });
-router.post('/confirmCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, userData, isCodeRight, e_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4, next()];
-            case 1:
-                _a.sent();
-                data = ctx.request.body;
-                if (!data) return [3, 8];
-                console.log(data);
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 7, , 8]);
-                return [4, UserModel.findOne({ where: { id: user.id } })];
-            case 3:
-                userData = _a.sent();
-                console.log(userData);
-                if (!(userData && userData.confirmCode)) return [3, 5];
-                return [4, bcrypt.compare(data.confirmCode, userData.confirmCode)];
-            case 4:
-                isCodeRight = _a.sent();
-                ctx.body = { res: isCodeRight };
-                return [3, 6];
-            case 5:
-                ctx.body = { res: false };
-                _a.label = 6;
-            case 6: return [3, 8];
-            case 7:
-                e_2 = _a.sent();
-                ctx.body = { msg: 'error' };
-                return [3, 8];
-            case 8: return [2];
-        }
-    });
-}); });
+app.use(koa_bodyparser_1.default());
+app.use(cors_1.default());
+app.use(router.routes());
 router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, msg, e_3;
+    var data, msg, e_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, next()];
             case 1:
                 _a.sent();
+                console.log(ctx);
                 data = ctx.request.body;
                 if (!data) return [3, 5];
                 console.log(data);
@@ -183,10 +108,134 @@ router.post('/runCode', function (ctx, next) { return __awaiter(void 0, void 0, 
                 ctx.body = { msg: msg };
                 return [3, 5];
             case 4:
-                e_3 = _a.sent();
+                e_1 = _a.sent();
                 ctx.body = { msg: 'error' };
                 return [3, 5];
             case 5: return [2];
+        }
+    });
+}); });
+router.get('/', function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        ctx.body = { msg: 'Hello world' };
+        return [2];
+    });
+}); });
+router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, userData, userEmail, isLogSuccessful, e_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, next()];
+            case 1:
+                _a.sent();
+                data = ctx.request.body;
+                if (!data) return [3, 10];
+                console.log(data);
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 9, , 10]);
+                userData = null;
+                return [4, UserEmails.findOne({ where: { eMail: data.login } })];
+            case 3:
+                userEmail = _a.sent();
+                if (!userEmail) return [3, 5];
+                return [4, UserModel.findOne({ where: { id: userEmail.userID } })];
+            case 4:
+                userData = _a.sent();
+                _a.label = 5;
+            case 5:
+                console.log(userData);
+                if (!userData) return [3, 7];
+                user.login = userEmail.eMail;
+                user.id = userData.id;
+                return [4, bcrypt.compare(data.password, userData.password)];
+            case 6:
+                isLogSuccessful = _a.sent();
+                console.log(isLogSuccessful);
+                ctx.body = { res: isLogSuccessful };
+                return [3, 8];
+            case 7:
+                ctx.body = { res: false };
+                _a.label = 8;
+            case 8: return [3, 10];
+            case 9:
+                e_2 = _a.sent();
+                ctx.body = { msg: 'error' };
+                return [3, 10];
+            case 10: return [2];
+        }
+    });
+}); });
+function issueTokenPair(userData) {
+    return __awaiter(this, void 0, void 0, function () {
+        var newRefreshToken;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    newRefreshToken = uuid();
+                    return [4, TokensDB.create({
+                            userID: userData.id,
+                            token: newRefreshToken,
+                        })];
+                case 1:
+                    _a.sent();
+                    return [2, {
+                            token: jwt.sign({ id: userData.id, userName: userData.fullName }, secretJWT),
+                            refreshToken: newRefreshToken,
+                        }];
+            }
+        });
+    });
+}
+router.use(jwtKoa({
+    secret: secretJWT
+}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }));
+router.post('/confirmCode', koa_bodyparser_1.default(), function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, userData, _a, _b;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4, next()];
+            case 1:
+                _c.sent();
+                data = ctx.request.body;
+                if (!data) return [3, 6];
+                console.log(data);
+                console.log(ctx);
+                return [4, UserModel.findOne({ where: { id: user.id } })];
+            case 2:
+                userData = _c.sent();
+                console.log(userData);
+                _a = !userData;
+                if (_a) return [3, 4];
+                return [4, bcrypt.compare(data.confirmCode, userData.confirmCode)];
+            case 3:
+                _a = !(_c.sent());
+                _c.label = 4;
+            case 4:
+                if (_a) {
+                    ctx.status = 403;
+                    ctx.body = { msg: 'Invalid user or password' };
+                    return [2];
+                }
+                userData.password = null;
+                ctx.status = 200;
+                _b = ctx;
+                return [4, issueTokenPair(userData)];
+            case 5:
+                _b.body = _c.sent();
+                _c.label = 6;
+            case 6: return [2];
+        }
+    });
+}); });
+router.post('/logout', jwtKoa({ secret: secretJWT }), function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, TokensDB.destroy({ where: { userID: ctx.state.user.id } })];
+            case 1:
+                _a.sent();
+                ctx.body = { success: true };
+                return [2];
         }
     });
 }); });

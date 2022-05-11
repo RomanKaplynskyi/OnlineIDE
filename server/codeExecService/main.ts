@@ -13,8 +13,13 @@ const OidProvider = require('./models/OidProvider')
 const oidManager = new OidManager({ redirectUrl: `http://localhost:3099/login_code` })
 const UserModel = require('./models/users')
 const UserEmails = require('./models/emails')
+const TokensDB = require('./models/tokens')
 const sequelize = require('./db')
 const bcrypt = require('bcrypt')
+const jwtKoa = require('koa-jwt')
+const koaBody = require('koa-body')
+const jwt = require('jsonwebtoken');
+const uuid = require('uuid/v4');
 const CodeHandler = new _CodeHandler()
 const providerIndex = 0
 const user = {
@@ -22,11 +27,7 @@ const user = {
   fullName: null,
   id: null
 }
-app.use(bodyParser());
-app.use(cors())
-app.use(router.routes());
-
-
+const secretJWT = process.env.JWT_SECRET || 'jwt_secret_key';
 //Asure OpenID Provider
 oidManager.RegisterProvider(new OidProvider({
   tenant_id: 'e85368ce-b733-4d62-9fbb-856330c351fe',
@@ -50,6 +51,27 @@ oidManager.RegisterProvider(new OidProvider({
   name: 'Google'
 }))
 
+app.use(bodyParser());
+app.use(cors())
+app.use(router.routes());
+
+router.post('/runCode', async (ctx , next) => {
+  await next()
+  console.log(ctx)
+
+  const data = ctx.request.body
+  if (data) {
+    console.log(data)
+    try {
+      const msg:string = await CodeHandler.Handle(data).catch(res => res)
+      console.log(msg)
+      ctx.body = { msg }
+    } catch (e) {
+      ctx.body = { msg: 'error' }
+    }
+  }
+});
+
 router.get('/', async (ctx) => {
   ctx.body = { msg: 'Hello world' };
 })
@@ -70,6 +92,7 @@ router.post('/logIn', async (ctx, next) => {
         user.login = userEmail.eMail
         user.id = userData.id
         const isLogSuccessful = await bcrypt.compare(data.password, userData.password)
+        console.log(isLogSuccessful)
         ctx.body = { res: isLogSuccessful }
       } else {
         ctx.body = { res: false}
@@ -80,45 +103,59 @@ router.post('/logIn', async (ctx, next) => {
   }
 })
 
-router.post('/confirmCode', async (ctx, next) => {
+async function issueTokenPair(userData) {
+  const newRefreshToken = uuid();
+  await TokensDB.create({
+    userID: userData.id,
+    token: newRefreshToken,
+  });
+
+  return {
+    token: jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT),
+    refreshToken: newRefreshToken,
+  };
+}
+
+router.use(jwtKoa({
+  secret: secretJWT
+}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }))
+
+
+router.post('/confirmCode', bodyParser(), async (ctx, next) => {
   await next()
   const data = ctx.request.body
   if (data) {
     console.log(data)
-    try {
-      const userData = await UserModel.findOne({where: {id: user.id}})
-      console.log(userData)
-      if (userData && userData.confirmCode) {
-        const isCodeRight = await bcrypt.compare(data.confirmCode, userData.confirmCode)
-        if (isCodeRight) {
-          userData.confirmCode = null
-          await userData.save()
-        }
-        ctx.body = { res: isCodeRight }
-      } else {
-        ctx.body = { res: false}
-      }
-    } catch (e) {
-      ctx.body = { msg: 'error' }
+    console.log(ctx)
+    const userData = await UserModel.findOne({where: {id: user.id}})
+    console.log(userData)
+    if (!userData || !(await bcrypt.compare(data.confirmCode, userData.confirmCode))) {
+      ctx.status = 403
+      ctx.body = { msg: 'Invalid user or password'}
+      return
     }
+    userData.password = null
+    ctx.status = 200
+    ctx.body = await issueTokenPair(userData)
   }
 })
 
-
-router.post('/runCode', async (ctx , next) => {
-  await next()
-  const data = ctx.request.body
-  if (data) {
-    console.log(data)
-    try {
-      const msg:string = await CodeHandler.Handle(data).catch(res => res)
-      console.log(msg)
-      ctx.body = { msg }
-    } catch (e) {
-      ctx.body = { msg: 'error' }
-    }
+/*router.post('/refreshToken', bodyParser(), async ctx => {
+  const { refreshToken } = ctx.request.body;
+  const dbToken = await TokensDB.findOne({ where: {token: refreshToken} });
+  if (!dbToken) {
+    return;
   }
-});
+  await TokensDB.destroy({ where: {token: refreshToken }});
+  ctx.body = await issueTokenPair(dbToken.userID);
+});*/
+
+router.post('/logout', jwtKoa({secret: secretJWT}), async ctx => {
+  await TokensDB.destroy({ where: {userID: ctx.state.user.id }});
+  ctx.body = { success: true }
+})
+
+
 
 router.get('/logViaMicrosoft', async (ctx , next) => {
   await next()
