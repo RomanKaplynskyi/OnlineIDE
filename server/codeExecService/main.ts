@@ -21,7 +21,7 @@ const koaBody = require('koa-body')
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 const CodeHandler = new _CodeHandler()
-const providerIndex = 0
+const providerIndex = 1 // 0 - to microsoft and 1 for google openID
 const user = {
   login: null,
   fullName: null,
@@ -46,8 +46,8 @@ oidManager.RegisterProvider(new OidProvider({
   client_secret: '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',
   token_url: 'https://oauth2.googleapis.com/token',
   authorize_url: 'https://accounts.google.com/o/oauth2/auth',
-  //scope: 'https://www.googleapis.com/auth/userinfo.profile',
-  scope: 'openid%20email%20profile',
+  // scope: 'https://www.googleapis.com/auth/userinfo.profile',
+  scope: 'profile',
   name: 'Google'
 }))
 
@@ -73,7 +73,7 @@ router.post('/runCode', async (ctx , next) => {
 });
 
 router.get('/', async (ctx) => {
-  ctx.body = { msg: 'Hello world' };
+  ctx.body = { msg: 'Hello[[[ world' };
 })
 
 router.post('/logIn', async (ctx, next) => {
@@ -170,10 +170,10 @@ router.post('/login_code', async (ctx, next) => {
   await next()
   const { code, state } = ctx.request.body
   const res = await oidManager.AuthUserByCode(code, oidManager.GetProviderByIndex(providerIndex))
-  const [header, data] = res.data?.access_token.split('.')
+  const [header, data] = res.data?.id_token.split('.')
    console.dir({
        header: atob(header),
-       data: atob(data)
+       data: Buffer.from(data, 'base64').toString("utf8")
   })
   ctx.redirect('http://localhost:8080')
 })

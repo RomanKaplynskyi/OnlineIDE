@@ -3,7 +3,7 @@ const {Sequelize} = require('sequelize')
 module.exports = new Sequelize(
     'onlineideulogdb',
     'postgres',
-    'admin',
+    'Windows1',
     {
         host: 'localhost',
         port: 5432,
