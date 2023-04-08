@@ -20,6 +20,7 @@ const jwtKoa = require('koa-jwt')
 const koaBody = require('koa-body')
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
+const bot = require('../../models/tgAuthBot/bot')
 const CodeHandler = new _CodeHandler()
 const providerIndex = 1 // 0 - to microsoft and 1 for google openID
 const user = {
@@ -27,6 +28,8 @@ const user = {
   fullName: null,
   id: null
 }
+
+
 const secretJWT = process.env.JWT_SECRET || 'jwt_secret_key';
 //Asure OpenID Provider
 oidManager.RegisterProvider(new OidProvider({
@@ -52,10 +55,15 @@ oidManager.RegisterProvider(new OidProvider({
 }))
 
 app.use(bodyParser());
-app.use(cors())
+app.use(cors({
+  credentials: true
+}))
 app.use(router.routes());
+router.use(jwtKoa({
+  secret: secretJWT
+}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }))
 
-router.post('/runCode', async (ctx , next) => {
+router.post('/runCode', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx , next) => {
   await next()
   console.log(ctx)
 
@@ -72,13 +80,19 @@ router.post('/runCode', async (ctx , next) => {
   }
 });
 
-router.get('/', async (ctx) => {
+router.get('/wee', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx) => {
   ctx.body = { msg: 'Hello[[[ world' };
+})
+
+router.get('/isAuthenticated', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx) => {
+  ctx.status = 200
+  ctx.body = 'ok'
 })
 
 router.post('/logIn', async (ctx, next) => {
   await next()
   const data = ctx.request.body
+
   if (data) {
     console.log(data)
     try {
@@ -94,6 +108,17 @@ router.post('/logIn', async (ctx, next) => {
         const isLogSuccessful = await bcrypt.compare(data.password, userData.password)
         console.log(isLogSuccessful)
         ctx.body = { res: isLogSuccessful }
+        if (isLogSuccessful) {
+          await generateToken(userData)
+          ctx.body = { res: true}
+          // await bot.sendMessage(userData.chatId, `ConfirmationCode to log in: ${userData.confirmCode}`);
+          /*ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
+            sameSite: 'lax',
+            httpOnly: true,
+            secure: false,
+            maxAge: 99999999
+          })*/
+        }
       } else {
         ctx.body = { res: false}
       }
@@ -102,6 +127,17 @@ router.post('/logIn', async (ctx, next) => {
     }
   }
 })
+
+async function generateToken(userData) {
+  const date = new Date()
+  date.setMinutes(date.getMinutes() + 5)
+  const res = await TokensDB.create({
+    userID: userData.id,
+    token: (Math.random() + 1).toString(36).substring(2),
+    expirationDate: date
+  });
+  return res
+}
 
 async function issueTokenPair(userData) {
   const newRefreshToken = uuid();
@@ -116,9 +152,6 @@ async function issueTokenPair(userData) {
   };
 }
 
-router.use(jwtKoa({
-  secret: secretJWT
-}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }))
 
 
 router.post('/confirmCode', bodyParser(), async (ctx, next) => {
@@ -150,8 +183,28 @@ router.post('/confirmCode', bodyParser(), async (ctx, next) => {
   ctx.body = await issueTokenPair(dbToken.userID);
 });*/
 
-router.post('/logout', jwtKoa({secret: secretJWT}), async ctx => {
-  await TokensDB.destroy({ where: {userID: ctx.state.user.id }});
+router.post('/register', async (ctx , next) => {
+  await next()
+  const confirmCode = (Math.random() + 1).toString(36).substring(2)
+  const newUser = await UserModel.create({
+    password: await bcrypt.hash(ctx.request.body.password, 10),
+    fullName: ctx.request.body.fullName,
+    confirmCode
+  })
+
+  await UserEmails.create({
+    userID: newUser.id,
+    eMail: ctx.request.body.email
+  })
+
+
+
+  ctx.body = { 'redirect': "http://t.me/OnlineIDELog_bot", 'confirmCode': confirmCode }
+})
+
+router.post('/logout', jwtKoa({secret: secretJWT, cookie: 'token'}), async ctx => {
+  // await TokensDB.destroy({ where: {userID: ctx.state.user.id }});
+  ctx.cookies.set('token', '')
   ctx.body = { success: true }
 })
 
@@ -171,11 +224,26 @@ router.post('/login_code', async (ctx, next) => {
   const { code, state } = ctx.request.body
   const res = await oidManager.AuthUserByCode(code, oidManager.GetProviderByIndex(providerIndex))
   const [header, data] = res.data?.id_token.split('.')
-   console.dir({
-       header: atob(header),
-       data: Buffer.from(data, 'base64').toString("utf8")
+  const responseResult = {
+    header: atob(header),
+    data: Buffer.from(data, 'base64').toString("utf8")
+  }
+  console.dir(responseResult)
+  const { email } = JSON.parse(responseResult.data)
+  const userEmail = await UserEmails.findOne({where: {eMail: email}})
+  if (!userEmail) {
+    ctx.status = 401
+    return
+  }
+  const userData = await UserModel.findOne({where: {id: userEmail.userID}})
+  ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
+    sameSite: 'lax',
+    httpOnly: true,
+    secure: false,
+    maxAge: 99999999
   })
-  ctx.redirect('http://localhost:8080')
+  ctx.response.body = { 'test': 2 }
+  ctx.redirect('http://localhost:8080?ddd=212')
 })
 
 app.listen(PORT, () => {

@@ -15,6 +15,7 @@ export default class RunButton extends Vue {
     const fileAsJson = JSON.stringify({ files })
     const codeExecutorUrl : string = `${config.codeExecServiceUrl}/runCode`
     fetch(codeExecutorUrl, {
+      credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=utf-8' },
       body: fileAsJson

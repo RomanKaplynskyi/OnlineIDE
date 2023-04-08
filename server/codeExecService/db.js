@@ -9,5 +9,4 @@ module.exports = new Sequelize(
         port: 5432,
         dialect: 'postgres'
     }
-
 )

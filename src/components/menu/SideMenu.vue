@@ -14,25 +14,14 @@
           </v-list-item-avatar>
         </v-list-item>
 
-        <v-list-item v-if="isUserLoged" link ref="loginButton">
+
+       <v-list-item v-if="isUserLoged" link ref="logoutButton">
           <v-list-item-content>
-            <v-list-item-title @click.prevent="visible=true" class="title">
-              Login
+            <v-list-item-title @click.prevent="logOut" class="title">
+              Logout
             </v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-
-<!--        <v-list-item v-if="isUserLoged" link ref="logoutButton">
-          <v-list-item-content>
-            <v-list-item-title @click.prevent="visible=true" class="title">
-              Logout
-            </v-list-item-title>
-            <v-list-item-subtitle hidden="true">${username}</v-list-item-subtitle>
-          </v-list-item-content>
-
-
-
-        </v-list-item>-->
       </v-list>
 
       <v-divider></v-divider>
@@ -68,7 +57,7 @@
 import { Vue, Component } from "vue-property-decorator"
 import login from '../authorization/LogIn.vue';
 //import User from "@/components/authorization/User";
-
+import config from "../../../projectConfig";
 @Component({
   components: {
     login
@@ -77,6 +66,14 @@ import login from '../authorization/LogIn.vue';
 export default class SideMenu extends Vue {
   visible: boolean = false
   isUserLoged: boolean = true
+  async logOut() {
+    await fetch(config.codeExecServiceUrl+'/logout', {
+      credentials: "include",
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;charset=utf-8' },
+    })
+    await this.$router.push({ name: 'Login' })
+  }
 }
 
 </script>

@@ -1,6 +1,6 @@
 <template>
   <v-app id="app">
-    <side-menu />
+    <side-menu v-if="!['Register', 'Login'].includes($route.name)" />
     <v-main>
       <router-view :key="$route.path" />
     </v-main>

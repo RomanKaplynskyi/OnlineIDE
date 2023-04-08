@@ -5,7 +5,7 @@
     persistent
     max-width="600px"
   >
-    <v-card>
+    <v-card v-if="loginVisible">
       <v-card-title>Login</v-card-title>
       <v-card-text>
         <v-form>
@@ -37,17 +37,17 @@
           color="blue darken-1"
           text
           plain
-          @click="openRegBot"
+          @click="registerVisible=true"
         >
           Register
         </v-btn>
         <v-btn
             color="blue darken-1"
             text
-            id="loginViaMicrosoftBtn"
-            @click="tryLoginViaMicrosoft"
+            id="loginViaOpenIdBtn"
+            @click="tryLoginViaOpenId"
         >
-          Log in via Microsoft
+          Log in via OpenID
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn
@@ -89,13 +89,14 @@ export default class LogIn extends Vue {
 
   registerVisible: boolean = false
   confirmCodeVisible: boolean = false
+  loginVisible: boolean = true
   errorMsgVisible: boolean = false
   successMsgVisible: boolean = false
 
   login: string = ''
   pass: string = ''
 
-  async tryLoginViaMicrosoft () {
+  async tryLoginViaOpenId () {
     console.dir('asdsa')
     const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaMicrosoft`
     window.location.href = codeExecutorUrl
@@ -105,6 +106,7 @@ export default class LogIn extends Vue {
     if (this.pass && this.login) {
       let codeExecutorUrl : string = `${config.codeExecServiceUrl}/logIn`
       fetch(codeExecutorUrl, {
+        credentials: "include",
         method: 'POST',
         headers: { 'Content-Type': 'application/json;charset=utf-8' },
         body: JSON.stringify({ login: this.login, password: this.pass })
@@ -126,10 +128,6 @@ export default class LogIn extends Vue {
             }
           })
     }
-  }
-
-  async openRegBot () {
-    window.open('http://t.me/OnlineIDELog_bot', '_blank');
   }
 
 }
