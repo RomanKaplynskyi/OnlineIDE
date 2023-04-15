@@ -1,7 +1,7 @@
 var sequelize = require('../db');
 var DataTypes = require('sequelize').DataTypes;
 var User = sequelize.define('users', {
-    chatId: { type: DataTypes.INTEGER },
+    chatID: { type: DataTypes.INTEGER },
     password: { type: DataTypes.STRING },
     phoneNum: { type: DataTypes.STRING },
     fullName: { type: DataTypes.STRING },

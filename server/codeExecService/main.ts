@@ -5,6 +5,7 @@ import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors'
 import _CodeHandler from "./CodeHandler";
 import Serve from 'koa-static';
+import User from "../../src/components/authorization/User";
 const app = new Koa();
 const router = new Router();
 const PORT = process.env.PORT || 3099;
@@ -12,7 +13,6 @@ const OidManager = require('./models/OidManager')
 const OidProvider = require('./models/OidProvider')
 const oidManager = new OidManager({ redirectUrl: `http://localhost:3099/login_code` })
 const UserModel = require('./models/users')
-const UserEmails = require('./models/emails')
 const TokensDB = require('./models/tokens')
 const sequelize = require('./db')
 const bcrypt = require('bcrypt')
@@ -28,6 +28,7 @@ const user = {
   fullName: null,
   id: null
 }
+const sessionTime = 5
 
 
 const secretJWT = process.env.JWT_SECRET || 'jwt_secret_key';
@@ -96,14 +97,12 @@ router.post('/logIn', async (ctx, next) => {
   if (data) {
     console.log(data)
     try {
-      let userData = null
-      const userEmail = await UserEmails.findOne({where: {eMail: data.login}})
-      if (userEmail) {
-        userData = await UserModel.findOne({where: {id: userEmail.userID}})
-      }
+
+      const userData = await UserModel.findOne({where: {login: data.login}})
+
       console.log(userData)
       if (userData) {
-        user.login = userEmail.eMail
+        user.login = userData.login
         user.id = userData.id
         const isLogSuccessful = await bcrypt.compare(data.password, userData.password)
         console.log(isLogSuccessful)
@@ -111,7 +110,7 @@ router.post('/logIn', async (ctx, next) => {
         if (isLogSuccessful) {
           await generateToken(userData)
           ctx.body = { res: true}
-          // await bot.sendMessage(userData.chatId, `ConfirmationCode to log in: ${userData.confirmCode}`);
+          // await bot.sendMessage(userData.chatID, `ConfirmationCode to log in: ${userData.confirmCode}`);
           /*ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
             sameSite: 'lax',
             httpOnly: true,
@@ -130,7 +129,7 @@ router.post('/logIn', async (ctx, next) => {
 
 async function generateToken(userData) {
   const date = new Date()
-  date.setMinutes(date.getMinutes() + 5)
+  date.setMinutes(date.getMinutes() + sessionTime)
   const res = await TokensDB.create({
     userID: userData.id,
     token: (Math.random() + 1).toString(36).substring(2),
@@ -186,18 +185,23 @@ router.post('/confirmCode', bodyParser(), async (ctx, next) => {
 router.post('/register', async (ctx , next) => {
   await next()
   const confirmCode = (Math.random() + 1).toString(36).substring(2)
-  const newUser = await UserModel.create({
+  const userData = await UserModel.create({
+    login:  ctx.request.body.email,
     password: await bcrypt.hash(ctx.request.body.password, 10),
     fullName: ctx.request.body.fullName,
     confirmCode
   })
 
-  await UserEmails.create({
-    userID: newUser.id,
-    eMail: ctx.request.body.email
-  })
+  try {
+    console.log(userData)
+   // user.login = userData.login
+    //user.id = userData.id
+    await generateToken(userData)
+    ctx.body = { res: true, confirmCode}
 
-
+  } catch (e) {
+    ctx.body = { msg: 'error' }
+  }
 
   ctx.body = { 'redirect': "http://t.me/OnlineIDELog_bot", 'confirmCode': confirmCode }
 })
@@ -230,12 +234,7 @@ router.post('/login_code', async (ctx, next) => {
   }
   console.dir(responseResult)
   const { email } = JSON.parse(responseResult.data)
-  const userEmail = await UserEmails.findOne({where: {eMail: email}})
-  if (!userEmail) {
-    ctx.status = 401
-    return
-  }
-  const userData = await UserModel.findOne({where: {id: userEmail.userID}})
+  const userData = await UserModel.findOne({where: {login: email}})
   ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
     sameSite: 'lax',
     httpOnly: true,
