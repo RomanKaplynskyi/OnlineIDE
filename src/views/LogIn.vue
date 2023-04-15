@@ -47,7 +47,7 @@
             <v-btn
                 color="blue darken-1"
                 text
-                @click="registerVisible=true"
+                @click="redirectToRegister"
             >
               Register
             </v-btn>
@@ -122,6 +122,10 @@ export default class LogIn extends Vue {
     }
   }
 
+  redirectToRegister () {
+    const redirectURL : string = 'http://localhost:8080/register'
+    window.location.href = redirectURL
+  }
 }
 </script>
 
