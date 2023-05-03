@@ -98,7 +98,7 @@ export default class LogIn extends Vue {
 
   async tryLoginViaOpenId () {
     console.dir('asdsa')
-    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaMicrosoft`
+    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaOpenID`
     window.location.href = codeExecutorUrl
   }
 

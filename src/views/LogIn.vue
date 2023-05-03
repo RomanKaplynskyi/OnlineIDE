@@ -34,7 +34,7 @@
                   <v-text-field
                     v-model="confirmCode"
                     :counter="100"
-                    label="Login"
+                    label="Confirm Code"
                     required
                   />
                 </v-row>
@@ -43,7 +43,8 @@
           </v-card-text>
           <v-card-text v-if="errorMsgVisible" style="color: red">Password or Login is incorrect! Please, try again!</v-card-text>
           <v-card-text v-if="successMsgVisible" style="color: green">You are logged in!</v-card-text>
-          <v-card-actions>
+          <v-card-text v-if="errorConfCodeMsgVisible" style="color: green">Not valid confirm code!</v-card-text>
+          <v-card-actions v-if="stage === 'login'">
             <v-btn
                 color="blue darken-1"
                 text
@@ -68,6 +69,16 @@
               Log in
             </v-btn>
           </v-card-actions>
+          <v-card-actions v-else>
+            <v-btn
+                color="blue darken-1"
+                text
+                @click="tryToConfirmCode"
+            >
+              Confirm
+            </v-btn>
+
+          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
@@ -79,19 +90,20 @@ import {Component, Vue} from "vue-property-decorator";
 import config from "../../projectConfig";
 @Component
 export default class LogIn extends Vue {
-  registerVisible: boolean = false
   confirmCodeVisible: boolean = false
   errorMsgVisible: boolean = false
   successMsgVisible: boolean = false
+  errorConfCodeMsgVisible: boolean = false
   stage: string = 'login'
   confirmCode: string = ''
+  userID: number = -1
 
   login: string = ''
   pass: string = ''
 
   async tryLoginViaOpenId () {
     console.dir('asdsa')
-    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaMicrosoft`
+    const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaOpenID`
     window.location.href = codeExecutorUrl
   }
 
@@ -111,12 +123,38 @@ export default class LogIn extends Vue {
               //this.successMsgVisible = true
               //setTimeout(() => this.successMsgVisible = false, 5000)
               this.stage = 'confirm'
+              this.userID = result.userID
               // this.$router.push({ path: '/' })
               // to do: нужно где-то сохранять логин  или ID чтоб потом юзать его на форме подтверждения кода
             } else {
               this.errorMsgVisible = true
               setTimeout(() => this.errorMsgVisible = false, 5000)
               console.log('Authentication error!')
+            }
+          })
+    }
+  }
+
+  async tryToConfirmCode () {
+    if (this.confirmCode) {
+      let codeExecutorUrl : string = `${config.codeExecServiceUrl}/tryToConfirmCode`
+      fetch(codeExecutorUrl, {
+        credentials: "include",
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+        body: JSON.stringify({ confirmCode: this.confirmCode, userID: this.userID })
+      })
+          .then(resp => resp.json())
+          .then(result => {
+            if (result && result.res) {
+              //this.successMsgVisible = true
+              //setTimeout(() => this.successMsgVisible = false, 5000)
+              this.$router.push({ path: '/' })
+              // to do: нужно где-то сохранять логин  или ID чтоб потом юзать его на форме подтверждения кода
+            } else {
+              this.errorConfCodeMsgVisible = true
+              setTimeout(() => this.errorMsgVisible = false, 5000)
+              console.log('Not valid confirm code!')
             }
           })
     }

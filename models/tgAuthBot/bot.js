@@ -52,6 +52,10 @@ bot.onText(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/, async msg => {
   console.log(msg)
   const chatID = msg.chat.id;
   const tgUser = await TgUser.findOne({ where: { chatID: chatID } })
+  if (!tgUser) {
+    await bot.sendMessage(chatID, 'Something gone wrong! we dont know what to do now')
+    return
+  }
   if (tgUser.state === USER_STATES.ON_CODE_SENDING) {
     await bot.sendMessage(chatID, 'We are waiting to receive your code from OnlineIDE')
     return
@@ -60,7 +64,7 @@ bot.onText(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/, async msg => {
 
   }
 
-  const user = await Users.findOne({ where: { login: msg.chat.text } })
+  const user = await Users.findOne({ where: { login: msg.text } })
   if (!user) {
     await bot.sendMessage(chatID, 'User not exists. Try again with another login or connect to administrators')
     return
@@ -70,7 +74,7 @@ bot.onText(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/, async msg => {
 })
 
 //code sending
-bot.onText( '[\\s\\S]*', async msg => {
+bot.onText( /[\\s\\S]*/, async msg => {
   const chatID = msg.chat.id;
   // send back the matched "whatever" to the chat
   const tgUser = await TgUser.findOne({ where: { chatID } })
@@ -79,7 +83,7 @@ bot.onText( '[\\s\\S]*', async msg => {
     return
   }
   const user = await Users.findOne({ where: { id: tgUser.userID } })
-  if (user.confirmCode !== msg.chat.text) {
+  if (user.confirmCode !== msg.text) {
     await bot.sendMessage(chatID, 'Code from OnlineIDE not match code that you send');
     return
   }

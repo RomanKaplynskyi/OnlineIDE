@@ -51,8 +51,8 @@ var OidManager = require('./models/OidManager');
 var OidProvider = require('./models/OidProvider');
 var oidManager = new OidManager({ redirectUrl: "http://localhost:3099/login_code" });
 var UserModel = require('./models/users');
-var UserEmails = require('./models/emails');
 var TokensDB = require('./models/tokens');
+var TgUser = require('../../models/tgAuthBot/db/dto/tgUser');
 var sequelize = require('./db');
 var bcrypt = require('bcrypt');
 var jwtKoa = require('koa-jwt');
@@ -67,6 +67,7 @@ var user = {
     fullName: null,
     id: null
 };
+var sessionTime = 5;
 var secretJWT = process.env.JWT_SECRET || 'jwt_secret_key';
 oidManager.RegisterProvider(new OidProvider({
     tenant_id: 'e85368ce-b733-4d62-9fbb-856330c351fe',
@@ -92,7 +93,7 @@ app.use(cors_1.default({
 app.use(router.routes());
 router.use(jwtKoa({
     secret: secretJWT
-}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }));
+}).unless({ path: [/^\/public|^\/login|^\/tryToConfirmCode|^\//] }));
 router.post('/runCode', jwtKoa({ secret: secretJWT, cookie: 'token' }), function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
     var data, msg, e_1;
     return __generator(this, function (_a) {
@@ -135,7 +136,7 @@ router.get('/isAuthenticated', jwtKoa({ secret: secretJWT, cookie: 'token' }), f
     });
 }); });
 router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, userData, userEmail, isLogSuccessful, e_2;
+    var data, userData, isLogSuccessful, userLogData, tgUser, e_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, next()];
@@ -147,30 +148,29 @@ router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, vo
                 _a.label = 2;
             case 2:
                 _a.trys.push([2, 11, , 12]);
-                userData = null;
-                return [4, UserEmails.findOne({ where: { eMail: data.login } })];
+                return [4, UserModel.findOne({ where: { login: data.login } })];
             case 3:
-                userEmail = _a.sent();
-                if (!userEmail) return [3, 5];
-                return [4, UserModel.findOne({ where: { id: userEmail.userID } })];
-            case 4:
                 userData = _a.sent();
-                _a.label = 5;
-            case 5:
                 console.log(userData);
                 if (!userData) return [3, 9];
-                user.login = userEmail.eMail;
+                user.login = userData.login;
                 user.id = userData.id;
                 return [4, bcrypt.compare(data.password, userData.password)];
-            case 6:
+            case 4:
                 isLogSuccessful = _a.sent();
                 console.log(isLogSuccessful);
                 ctx.body = { res: isLogSuccessful };
                 if (!isLogSuccessful) return [3, 8];
                 return [4, generateToken(userData)];
+            case 5:
+                userLogData = _a.sent();
+                return [4, TgUser.findOne({ where: { userID: user.id } })];
+            case 6:
+                tgUser = _a.sent();
+                return [4, bot.sendMessage(tgUser.chatID, "ConfirmationCode to log in: " + userLogData.token)];
             case 7:
                 _a.sent();
-                ctx.body = { res: true };
+                ctx.body = { res: true, userID: userData.id };
                 _a.label = 8;
             case 8: return [3, 10];
             case 9:
@@ -185,6 +185,47 @@ router.post('/logIn', function (ctx, next) { return __awaiter(void 0, void 0, vo
         }
     });
 }); });
+router.post('/tryToConfirmCode', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, userTokenData, userData, e_3;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, next()];
+            case 1:
+                _a.sent();
+                data = ctx.request.body;
+                if (!data) return [3, 8];
+                console.log(data);
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 7, , 8]);
+                return [4, TokensDB.findOne({ where: { userID: data.userID, token: data.confirmCode } })];
+            case 3:
+                userTokenData = _a.sent();
+                console.log(userTokenData);
+                if (!userTokenData) return [3, 5];
+                return [4, UserModel.findOne({ where: { id: userTokenData.userID } })];
+            case 4:
+                userData = _a.sent();
+                ctx.cookies.set('token', jwt.sign({ id: userData.id, userName: userData.fullName }, secretJWT), {
+                    sameSite: 'lax',
+                    httpOnly: true,
+                    secure: false,
+                    maxAge: 99999999
+                });
+                ctx.body = { res: true };
+                return [3, 6];
+            case 5:
+                ctx.body = { res: false };
+                _a.label = 6;
+            case 6: return [3, 8];
+            case 7:
+                e_3 = _a.sent();
+                ctx.body = { msg: 'error' };
+                return [3, 8];
+            case 8: return [2];
+        }
+    });
+}); });
 function generateToken(userData) {
     return __awaiter(this, void 0, void 0, function () {
         var date, res;
@@ -192,7 +233,7 @@ function generateToken(userData) {
             switch (_a.label) {
                 case 0:
                     date = new Date();
-                    date.setMinutes(date.getMinutes() + 5);
+                    date.setMinutes(date.getMinutes() + sessionTime);
                     return [4, TokensDB.create({
                             userID: userData.id,
                             token: (Math.random() + 1).toString(36).substring(2),
@@ -265,7 +306,7 @@ router.post('/confirmCode', koa_bodyparser_1.default(), function (ctx, next) { r
     });
 }); });
 router.post('/register', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var confirmCode, newUser, _a, _b;
+    var confirmCode, userData, _a, _b, e_4;
     var _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -274,20 +315,30 @@ router.post('/register', function (ctx, next) { return __awaiter(void 0, void 0,
                 _d.sent();
                 confirmCode = (Math.random() + 1).toString(36).substring(2);
                 _b = (_a = UserModel).create;
-                _c = {};
+                _c = {
+                    login: ctx.request.body.email
+                };
                 return [4, bcrypt.hash(ctx.request.body.password, 10)];
             case 2: return [4, _b.apply(_a, [(_c.password = _d.sent(),
                         _c.fullName = ctx.request.body.fullName,
                         _c.confirmCode = confirmCode,
                         _c)])];
             case 3:
-                newUser = _d.sent();
-                return [4, UserEmails.create({
-                        userID: newUser.id,
-                        eMail: ctx.request.body.email
-                    })];
+                userData = _d.sent();
+                _d.label = 4;
             case 4:
+                _d.trys.push([4, 6, , 7]);
+                console.log(userData);
+                return [4, generateToken(userData)];
+            case 5:
                 _d.sent();
+                ctx.body = { res: true, confirmCode: confirmCode };
+                return [3, 7];
+            case 6:
+                e_4 = _d.sent();
+                ctx.body = { msg: 'error' };
+                return [3, 7];
+            case 7:
                 ctx.body = { 'redirect': "http://t.me/OnlineIDELog_bot", 'confirmCode': confirmCode };
                 return [2];
         }
@@ -300,7 +351,7 @@ router.post('/logout', jwtKoa({ secret: secretJWT, cookie: 'token' }), function 
         return [2];
     });
 }); });
-router.get('/logViaMicrosoft', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
+router.get('/logViaOpenID', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
     var res;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -315,7 +366,7 @@ router.get('/logViaMicrosoft', function (ctx, next) { return __awaiter(void 0, v
     });
 }); });
 router.post('/login_code', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, code, state, res, _b, header, data, responseResult, email, userEmail, userData;
+    var _a, code, state, res, _b, header, data, responseResult, email, userData;
     var _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -333,15 +384,8 @@ router.post('/login_code', function (ctx, next) { return __awaiter(void 0, void 
                 };
                 console.dir(responseResult);
                 email = JSON.parse(responseResult.data).email;
-                return [4, UserEmails.findOne({ where: { eMail: email } })];
+                return [4, UserModel.findOne({ where: { login: email } })];
             case 3:
-                userEmail = _d.sent();
-                if (!userEmail) {
-                    ctx.status = 401;
-                    return [2];
-                }
-                return [4, UserModel.findOne({ where: { id: userEmail.userID } })];
-            case 4:
                 userData = _d.sent();
                 ctx.cookies.set('token', jwt.sign({ id: userData.id, userName: userData.fullName }, secretJWT), {
                     sameSite: 'lax',

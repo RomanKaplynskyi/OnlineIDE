@@ -4,8 +4,6 @@ import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors'
 import _CodeHandler from "./CodeHandler";
-import Serve from 'koa-static';
-import User from "../../src/components/authorization/User";
 const app = new Koa();
 const router = new Router();
 const PORT = process.env.PORT || 3099;
@@ -14,6 +12,7 @@ const OidProvider = require('./models/OidProvider')
 const oidManager = new OidManager({ redirectUrl: `http://localhost:3099/login_code` })
 const UserModel = require('./models/users')
 const TokensDB = require('./models/tokens')
+const TgUser = require('../../models/tgAuthBot/db/dto/tgUser')
 const sequelize = require('./db')
 const bcrypt = require('bcrypt')
 const jwtKoa = require('koa-jwt')
@@ -62,7 +61,7 @@ app.use(cors({
 app.use(router.routes());
 router.use(jwtKoa({
   secret: secretJWT
-}).unless({ path: [/^\/public|^\/login|^\/confirmCode|^\//] }))
+}).unless({ path: [/^\/public|^\/login|^\/tryToConfirmCode|^\//] }))
 
 router.post('/runCode', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx , next) => {
   await next()
@@ -108,9 +107,11 @@ router.post('/logIn', async (ctx, next) => {
         console.log(isLogSuccessful)
         ctx.body = { res: isLogSuccessful }
         if (isLogSuccessful) {
-          await generateToken(userData)
-          ctx.body = { res: true}
-          // await bot.sendMessage(userData.chatID, `ConfirmationCode to log in: ${userData.confirmCode}`);
+          const userLogData = await generateToken(userData)
+          const tgUser = await TgUser.findOne({ where: { userID: user.id } })
+          await bot.sendMessage(tgUser.chatID, `ConfirmationCode to log in: ${userLogData.token}`);
+          ctx.body = { res: true, userID: userData.id}
+
           /*ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
             sameSite: 'lax',
             httpOnly: true,
@@ -118,6 +119,33 @@ router.post('/logIn', async (ctx, next) => {
             maxAge: 99999999
           })*/
         }
+      } else {
+        ctx.body = { res: false}
+      }
+    } catch (e) {
+      ctx.body = { msg: 'error' }
+    }
+  }
+})
+router.post('/tryToConfirmCode', async (ctx, next) => {
+  await next()
+  const data = ctx.request.body
+
+  if (data) {
+    console.log(data)
+    try {
+      const userTokenData = await TokensDB.findOne({where: {userID: data.userID, token: data.confirmCode}})
+      console.log(userTokenData)
+      if (userTokenData) {
+        const userData = await UserModel.findOne({where: {id: userTokenData.userID}})
+
+        ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
+            sameSite: 'lax',
+            httpOnly: true,
+            secure: false,
+            maxAge: 99999999
+          })
+        ctx.body = { res: true }
       } else {
         ctx.body = { res: false}
       }
@@ -214,7 +242,7 @@ router.post('/logout', jwtKoa({secret: secretJWT, cookie: 'token'}), async ctx =
 
 
 
-router.get('/logViaMicrosoft', async (ctx , next) => {
+router.get('/logViaOpenID', async (ctx , next) => {
   await next()
 
   const res = oidManager.GetRedirectHeaderByProvider(oidManager.GetProviderByIndex(providerIndex))
@@ -254,6 +282,4 @@ app.listen(PORT, () => {
     console.log('Databaze connection failed')
   }
 });
-//const server = app.listen(PORT)
 
-//module.exports = server

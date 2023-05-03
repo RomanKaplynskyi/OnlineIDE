@@ -11,7 +11,7 @@ async function main () {
         console.error(e)
         return
     }
-    await sequelize.sync({ force: true });
+    await sequelize.sync({});
     bot.startPolling()
 }
 main()
