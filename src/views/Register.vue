@@ -53,7 +53,7 @@
             <v-btn
                 color="blue darken-1"
                 text
-                @click="$emit('update:visible', false)"
+                @click="closeClick"
             >
               Close
             </v-btn>
@@ -92,7 +92,7 @@
         <v-btn
             color="primary"
             flat
-            @click="dialog = false"
+            @click="getItClick"
         >
           I get it
         </v-btn>
@@ -137,6 +137,16 @@ export default class Register extends Vue {
 
   }
 
+  getItClick () {
+    this.dialog = false
+    const redirectURL : string = 'http://localhost:8080/'
+    window.location.href = redirectURL
+  }
+
+  closeClick () {
+    const redirectURL : string = 'http://localhost:8080/'
+    window.location.href = redirectURL
+  }
 }
 </script>
 

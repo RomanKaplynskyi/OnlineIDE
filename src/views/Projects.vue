@@ -54,11 +54,6 @@ import ProjectDialog from "@/components/projects/ProjectDialog.vue";
 })
 export default class ProjectFrame extends Vue {
   projectDialogVisible: boolean = false
-  // projects = [{
-  //   name: 'test',
-  //   description: 'test descr',
-  //   author: 'ddd'
-  // }]
 
   projects = [ ]
 

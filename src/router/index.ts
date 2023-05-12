@@ -62,9 +62,7 @@ router.beforeEach(async (to, from, next) => {
       method: 'GET',
       headers: { 'Content-Type': 'application/json;charset=utf-8' },
     })
-    console.log('sss')
   } catch (e) {
-    console.log('www')
     res.status = 401
   }
   console.log(res)

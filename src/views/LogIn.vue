@@ -42,6 +42,7 @@
             </v-form>
           </v-card-text>
           <v-card-text v-if="errorMsgVisible" style="color: red">Password or Login is incorrect! Please, try again!</v-card-text>
+          <v-card-text v-if="userNotExistMsg" style="color: red">User not exist! Please, register before auth!</v-card-text>
           <v-card-text v-if="successMsgVisible" style="color: green">You are logged in!</v-card-text>
           <v-card-text v-if="errorConfCodeMsgVisible" style="color: green">Not valid confirm code!</v-card-text>
           <v-card-actions v-if="stage === 'login'">
@@ -101,6 +102,8 @@ export default class LogIn extends Vue {
   login: string = ''
   pass: string = ''
 
+  userNotExistMsg : boolean = this.$route.query.userNotExist ? true : false
+
   async tryLoginViaOpenId () {
     console.dir('asdsa')
     const codeExecutorUrl : string = `${config.codeExecServiceUrl}/logViaOpenID`
@@ -120,12 +123,8 @@ export default class LogIn extends Vue {
           .then(result => {
             if (result && result.res) {
               this.confirmCodeVisible = true
-              //this.successMsgVisible = true
-              //setTimeout(() => this.successMsgVisible = false, 5000)
               this.stage = 'confirm'
               this.userID = result.userID
-              // this.$router.push({ path: '/' })
-              // to do: нужно где-то сохранять логин  или ID чтоб потом юзать его на форме подтверждения кода
             } else {
               this.errorMsgVisible = true
               setTimeout(() => this.errorMsgVisible = false, 5000)
@@ -147,10 +146,8 @@ export default class LogIn extends Vue {
           .then(resp => resp.json())
           .then(result => {
             if (result && result.res) {
-              //this.successMsgVisible = true
-              //setTimeout(() => this.successMsgVisible = false, 5000)
+
               this.$router.push({ path: '/' })
-              // to do: нужно где-то сохранять логин  или ID чтоб потом юзать его на форме подтверждения кода
             } else {
               this.errorConfCodeMsgVisible = true
               setTimeout(() => this.errorMsgVisible = false, 5000)

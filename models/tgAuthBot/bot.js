@@ -77,19 +77,21 @@ bot.onText(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/, async msg => {
 bot.onText( /[\\s\\S]*/, async msg => {
   const chatID = msg.chat.id;
   // send back the matched "whatever" to the chat
-  const tgUser = await TgUser.findOne({ where: { chatID } })
-  if (tgUser.state !== USER_STATES.ON_CODE_SENDING) {
-    await bot.sendMessage(chatID, 'We are waiting to receive your email from OnlineIDE')
-    return
+  let tgUser = await TgUser.findOne({ where: { chatID } })
+  if (tgUser && !(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(msg.text))) {
+    if (tgUser.state !== USER_STATES.ON_CODE_SENDING) {
+      await bot.sendMessage(chatID, 'We are waiting to receive your email from OnlineIDE')
+      return
+    }
+    const user = await Users.findOne({ where: { id: tgUser.userID } })
+    if (user.confirmCode !== msg.text) {
+      await bot.sendMessage(chatID, 'Code from OnlineIDE not match code that you send');
+      return
+    }
+    await TgUser.update({ state: USER_STATES.REGISTERED }, { where: { chatID } })
+    await Users.update({ confirmCode: null }, { where: { id: user.id } })
+    await bot.sendMessage(chatID, 'Your successfully connected two factor auth. Confirm code will be sent in this chat while next auth attempt.');
   }
-  const user = await Users.findOne({ where: { id: tgUser.userID } })
-  if (user.confirmCode !== msg.text) {
-    await bot.sendMessage(chatID, 'Code from OnlineIDE not match code that you send');
-    return
-  }
-  await TgUser.update({ state: USER_STATES.REGISTERED }, { where: { chatID } })
-  await Users.update({ confirmCode: null }, { where: { id: user.id } })
-  await bot.sendMessage(chatID, 'Your successfully connected two factor auth');
 })
 
 module.exports = bot

@@ -122,12 +122,6 @@ router.post('/runCode', jwtKoa({ secret: secretJWT, cookie: 'token' }), function
         }
     });
 }); });
-router.get('/wee', jwtKoa({ secret: secretJWT, cookie: 'token' }), function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        ctx.body = { msg: 'Hello[[[ world' };
-        return [2];
-    });
-}); });
 router.get('/isAuthenticated', jwtKoa({ secret: secretJWT, cookie: 'token' }), function (ctx) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         ctx.status = 200;
@@ -267,44 +261,6 @@ function issueTokenPair(userData) {
         });
     });
 }
-router.post('/confirmCode', koa_bodyparser_1.default(), function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, userData, _a, _b;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
-            case 0: return [4, next()];
-            case 1:
-                _c.sent();
-                data = ctx.request.body;
-                if (!data) return [3, 6];
-                console.log(data);
-                console.log(ctx);
-                return [4, UserModel.findOne({ where: { id: user.id } })];
-            case 2:
-                userData = _c.sent();
-                console.log(userData);
-                _a = !userData;
-                if (_a) return [3, 4];
-                return [4, bcrypt.compare(data.confirmCode, userData.confirmCode)];
-            case 3:
-                _a = !(_c.sent());
-                _c.label = 4;
-            case 4:
-                if (_a) {
-                    ctx.status = 403;
-                    ctx.body = { msg: 'Invalid user or password' };
-                    return [2];
-                }
-                userData.password = null;
-                ctx.status = 200;
-                _b = ctx;
-                return [4, issueTokenPair(userData)];
-            case 5:
-                _b.body = _c.sent();
-                _c.label = 6;
-            case 6: return [2];
-        }
-    });
-}); });
 router.post('/register', function (ctx, next) { return __awaiter(void 0, void 0, void 0, function () {
     var confirmCode, userData, _a, _b, e_4;
     var _c;
@@ -387,14 +343,19 @@ router.post('/login_code', function (ctx, next) { return __awaiter(void 0, void 
                 return [4, UserModel.findOne({ where: { login: email } })];
             case 3:
                 userData = _d.sent();
-                ctx.cookies.set('token', jwt.sign({ id: userData.id, userName: userData.fullName }, secretJWT), {
-                    sameSite: 'lax',
-                    httpOnly: true,
-                    secure: false,
-                    maxAge: 99999999
-                });
-                ctx.response.body = { 'test': 2 };
-                ctx.redirect('http://localhost:8080?ddd=212');
+                if (userData) {
+                    ctx.cookies.set('token', jwt.sign({ id: userData.id, userName: userData.fullName }, secretJWT), {
+                        sameSite: 'lax',
+                        httpOnly: true,
+                        secure: false,
+                        maxAge: 99999999
+                    });
+                    ctx.redirect('http://localhost:8080/');
+                }
+                else {
+                    ctx.response.body = { 'test': '2' };
+                    ctx.redirect('http://localhost:8080/logIn?isUserNotExist=1');
+                }
                 return [2];
         }
     });

@@ -80,10 +80,6 @@ router.post('/runCode', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (c
   }
 });
 
-router.get('/wee', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx) => {
-  ctx.body = { msg: 'Hello[[[ world' };
-})
-
 router.get('/isAuthenticated', jwtKoa({ secret: secretJWT, cookie: 'token' }), async (ctx) => {
   ctx.status = 200
   ctx.body = 'ok'
@@ -111,13 +107,6 @@ router.post('/logIn', async (ctx, next) => {
           const tgUser = await TgUser.findOne({ where: { userID: user.id } })
           await bot.sendMessage(tgUser.chatID, `ConfirmationCode to log in: ${userLogData.token}`);
           ctx.body = { res: true, userID: userData.id}
-
-          /*ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
-            sameSite: 'lax',
-            httpOnly: true,
-            secure: false,
-            maxAge: 99999999
-          })*/
         }
       } else {
         ctx.body = { res: false}
@@ -127,6 +116,7 @@ router.post('/logIn', async (ctx, next) => {
     }
   }
 })
+
 router.post('/tryToConfirmCode', async (ctx, next) => {
   await next()
   const data = ctx.request.body
@@ -179,37 +169,6 @@ async function issueTokenPair(userData) {
   };
 }
 
-
-
-router.post('/confirmCode', bodyParser(), async (ctx, next) => {
-  await next()
-  const data = ctx.request.body
-  if (data) {
-    console.log(data)
-    console.log(ctx)
-    const userData = await UserModel.findOne({where: {id: user.id}})
-    console.log(userData)
-    if (!userData || !(await bcrypt.compare(data.confirmCode, userData.confirmCode))) {
-      ctx.status = 403
-      ctx.body = { msg: 'Invalid user or password'}
-      return
-    }
-    userData.password = null
-    ctx.status = 200
-    ctx.body = await issueTokenPair(userData)
-  }
-})
-
-/*router.post('/refreshToken', bodyParser(), async ctx => {
-  const { refreshToken } = ctx.request.body;
-  const dbToken = await TokensDB.findOne({ where: {token: refreshToken} });
-  if (!dbToken) {
-    return;
-  }
-  await TokensDB.destroy({ where: {token: refreshToken }});
-  ctx.body = await issueTokenPair(dbToken.userID);
-});*/
-
 router.post('/register', async (ctx , next) => {
   await next()
   const confirmCode = (Math.random() + 1).toString(36).substring(2)
@@ -240,8 +199,6 @@ router.post('/logout', jwtKoa({secret: secretJWT, cookie: 'token'}), async ctx =
   ctx.body = { success: true }
 })
 
-
-
 router.get('/logViaOpenID', async (ctx , next) => {
   await next()
 
@@ -263,14 +220,17 @@ router.post('/login_code', async (ctx, next) => {
   console.dir(responseResult)
   const { email } = JSON.parse(responseResult.data)
   const userData = await UserModel.findOne({where: {login: email}})
-  ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
-    sameSite: 'lax',
-    httpOnly: true,
-    secure: false,
-    maxAge: 99999999
-  })
-  ctx.response.body = { 'test': 2 }
-  ctx.redirect('http://localhost:8080?ddd=212')
+  if (userData) {
+    ctx.cookies.set('token', jwt.sign({id: userData.id, userName: userData.fullName}, secretJWT), {
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: false,
+      maxAge: 99999999
+    })
+    ctx.redirect('http://localhost:8080/')
+  } else {
+    ctx.redirect('http://localhost:8080/logIn?userNotExist=1', )
+  }
 })
 
 app.listen(PORT, () => {
